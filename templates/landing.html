@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhishGuard — AI Security</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #000;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --green: #10b981;
+      --red: #ef4444;
+      --text: #f1f5f9;
+      --muted: #475569;
+      --mono: 'Space Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;   /* allow vertical scroll, prevent sideways */
+  overflow-y: auto;
+   scroll-behavior: smooth;     /* enable vertical scrolling */
+  background: #000;
+  font-family: var(--sans);
+  color: var(--text);
+}
+
+
+    #matrix-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.35;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 2.5rem;
+      height: 64px;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-logo-mark {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-left: auto;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: color 0.2s;
+      cursor: pointer;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-btn {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      padding: 8px 18px;
+      border-radius: 6px;
+      border: 1px solid rgba(59,130,246,0.4);
+      color: var(--blue);
+      background: rgba(59,130,246,0.08);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: rgba(59,130,246,0.15);
+      border-color: var(--blue);
+    }
+
+    /* HERO */
+    .hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 100vh;   /* ✅ FIX */
+  padding: 100px 2rem 140px; /* top for nav, bottom for stats */
+
+  text-align: center;
+}
+
+    /* SHIELD - simplified, no rings */
+    .shield-wrap {
+      position: relative;
+      width: 130px; height: 130px;
+      margin-bottom: 2.5rem;
+    }
+
+    .shield-orbit {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(59,130,246,0.2);
+      animation: ringRotate 10s linear infinite;
+    }
+
+    .shield-orbit::before {
+      content: '';
+      position: absolute;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--blue);
+      top: -3.5px; left: 50%;
+      transform: translateX(-50%);
+      box-shadow: 0 0 8px var(--blue);
+    }
+
+    @keyframes ringRotate {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    .shield-core {
+      position: absolute;
+      inset: 18px;
+      background: rgba(10,15,30,0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      border: 1px solid rgba(59,130,246,0.25);
+      animation: shieldPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes shieldPulse {
+      0%,100% { box-shadow: 0 0 20px rgba(59,130,246,0.15); }
+      50%      { box-shadow: 0 0 50px rgba(59,130,246,0.3); }
+    }
+
+    .hero-eyebrow {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      color: var(--blue);
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero-eyebrow::before, .hero-eyebrow::after {
+      content: '';
+      width: 24px; height: 1px;
+      background: var(--blue);
+      opacity: 0.4;
+    }
+
+    .hero-title {
+      font-family: var(--mono);
+      font-size: clamp(2.2rem, 5vw, 4.2rem);
+      font-weight: 700;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero-title .line1 { color: #fff; }
+    .hero-title .line2 {
+      background: linear-gradient(90deg, var(--blue), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 0.95rem;
+      color: var(--muted);
+      max-width: 400px;
+      line-height: 1.75;
+      margin-bottom: 2.5rem;
+    }
+
+    .cta-wrap {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn-cta {
+      position: relative;
+      padding: 14px 36px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #fff;
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      overflow: hidden;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(59,130,246,0.35); }
+
+    .btn-cta .scan-icon {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* STATS */
+    .stats {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      padding: 1rem 2rem;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .stat { text-align: center; }
+
+    .stat-num {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* SCANLINE */
+    .scanline {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent);
+      z-index: 200;
+      animation: scanMove 5s ease-in-out infinite;
+    }
+
+    @keyframes scanMove {
+      0%   { top: 0%; }
+      100% { top: 100%; }
+    }
+
+    /* CORNER DECORATIONS */
+    .corner {
+      position: fixed;
+      width: 32px; height: 32px;
+      z-index: 5;
+      opacity: 0.25;
+    }
+
+    .corner-tl { top: 80px; left: 20px; border-top: 1px solid var(--blue); border-left: 1px solid var(--blue); }
+    .corner-tr { top: 80px; right: 20px; border-top: 1px solid var(--blue); border-right: 1px solid var(--blue); }
+    .corner-bl { bottom: 60px; left: 20px; border-bottom: 1px solid var(--blue); border-left: 1px solid var(--blue); }
+    .corner-br { bottom: 60px; right: 20px; border-bottom: 1px solid var(--blue); border-right: 1px solid var(--blue); }
+
+    /* ── OVERLAY PANEL ── */
+    .overlay-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(10px);
+      z-index: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .overlay-panel {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -48%) scale(0.97);
+      z-index: 600;
+      width: min(720px, 92vw);
+      max-height: 80vh;
+      overflow-y: auto;
+      background: rgba(6, 12, 26, 0.97);
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 20px;
+      padding: 2rem 2.25rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+
+    .overlay-panel.open {
+      opacity: 1;
+      pointer-events: all;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .overlay-panel::-webkit-scrollbar { width: 4px; }
+    .overlay-panel::-webkit-scrollbar-track { background: transparent; }
+    .overlay-panel::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.2); border-radius: 99px; }
+
+    .panel-close {
+      position: absolute;
+      top: 1.25rem; right: 1.25rem;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .panel-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    .panel-eyebrow {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      color: var(--blue);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1.75rem;
+    }
+
+    /* Feature grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .feat-card {
+      background: rgba(15,25,50,0.7);
+      border: 1px solid rgba(59,130,246,0.12);
+      border-radius: 14px;
+      padding: 1.25rem;
+      transition: border-color 0.2s;
+    }
+
+    .feat-card:hover { border-color: rgba(59,130,246,0.3); }
+
+    .feat-icon {
+      font-size: 1.4rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .feat-name {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.02em;
+    }
+
+    .feat-desc {
+      font-size: 0.8rem;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    /* API grid */
+    .api-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .api-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      background: rgba(15,25,50,0.6);
+      border: 1px solid rgba(59,130,246,0.1);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      transition: border-color 0.2s;
+    }
+
+    .api-row:hover { border-color: rgba(59,130,246,0.25); }
+
+    .api-dot {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .api-dot.blue   { background: rgba(59,130,246,0.15); }
+    .api-dot.purple { background: rgba(139,92,246,0.15); }
+    .api-dot.orange { background: rgba(249,115,22,0.15); }
+    .api-dot.green  { background: rgba(16,185,129,0.15); }
+    .api-dot.pink   { background: rgba(236,72,153,0.15); }
+
+    .api-name {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 0.25rem;
+    }
+
+    .api-key-tag {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: #3b82f6;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.2);
+      padding: 1px 7px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+
+    .api-desc {
+      font-size: 0.8rem;
+      color: #475569;
+      line-height: 1.55;
+    }
+
+    /* About */
+    .about-body {
+      font-size: 0.88rem;
+      color: #64748b;
+      line-height: 1.8;
+    }
+
+    .about-body p { margin-bottom: 1rem; }
+
+    .about-stack {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 1.5rem;
+    }
+
+    .stack-chip {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(59,130,246,0.2);
+      color: #60a5fa;
+      background: rgba(59,130,246,0.07);
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<div class="scanline"></div>
+
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">🛡️</div>
+    PhishGuard
+  </a>
+  <ul class="nav-links">
+    <li><a onclick="openPanel('features')">Features</a></li>
+    <li><a onclick="openPanel('apis')">APIs</a></li>
+    <li><a onclick="openPanel('about')">About</a></li>
+    <li><a href="#" class="nav-btn">Login</a></li>
+    <li><a href="#" class="nav-btn" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;">Sign Up</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+
+  <div class="shield-wrap">
+    <div class="shield-orbit"></div>
+    <div class="shield-core">🛡️</div>
+  </div>
+
+  <div class="hero-eyebrow">AI-Powered Threat Detection</div>
+
+  <h1 class="hero-title">
+    <div class="line1">Stay Safe.</div>
+    <div class="line2">Scan Smarter.</div>
+  </h1>
+
+  <p class="hero-sub">
+    Real-time phishing detection using ML, Google Safe Browsing,
+    VirusTotal and HuggingFace AI — all in one click.
+  </p>
+
+  <div class="cta-wrap">
+  <a href="{{ url_for('index') }}" class="btn-cta">
+    <div class="scan-icon"></div>
+    <span>SCAN URL NOW</span>
+  </a>
+</div>
+
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-num">97.3%</div>
+    <div class="stat-label">ML Accuracy</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">91+</div>
+    <div class="stat-label">AV Engines</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">5</div>
+    <div class="stat-label">Detection Layers</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">70K</div>
+    <div class="stat-label">URLs Trained</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">&lt;5s</div>
+    <div class="stat-label">Scan Time</div>
+  </div>
+</div>
+
+<!-- ── OVERLAY BACKDROP ── -->
+<div class="overlay-backdrop" id="backdrop" onclick="closePanel()"></div>
+
+<!-- FEATURES PANEL -->
+<div class="overlay-panel" id="panel-features">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div class="panel-eyebrow">What we do</div>
+  <div class="panel-title">Features</div>
+  <div class="features-grid">
+    <div class="feat-card">
+      <span class="feat-icon">🤖</span>
+      <div class="feat-name">ML Phishing Model</div>
+      <div class="feat-desc">Trained on 70K+ URLs with 97.3% accuracy. Extracts 20+ URL features — length, entropy, special chars, TLD risk — and classifies in milliseconds.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🔍</span>
+      <div class="feat-name">Google Safe Browsing</div>
+      <div class="feat-desc">Checks every URL against Google's real-time threat database covering phishing, malware, and unwanted software across billions of URLs.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🦠</span>
+      <div class="feat-name">VirusTotal Scan</div>
+      <div class="feat-desc">Aggregates results from 91+ antivirus engines. Shows malicious, suspicious, and clean counts with live bar charts per engine verdict.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🧠</span>
+      <div class="feat-name">HuggingFace AI</div>
+      <div class="feat-desc">Secondary deep-learning verdict from the elftsdmr/malware-url-detect model hosted on HuggingFace Inference API for cross-validated confidence.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🌐</span>
+      <div class="feat-name">Live DNS & WHOIS</div>
+      <div class="feat-desc">Resolves the domain's IP, country, ASN, and hosting provider in real-time. Detects newly registered domains and suspicious registrars.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🔒</span>
+      <div class="feat-name">SSL Certificate Check</div>
+      <div class="feat-desc">Validates the site's TLS certificate — issuer, expiry, and validity status. Missing or self-signed certificates raise the phishing confidence score.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">🏷️</span>
+      <div class="feat-name">Brand Impersonation</div>
+      <div class="feat-desc">Pattern-matches known brand names in subdomains and paths. Detects paypal-login.ru, secure-amazon.xyz style typosquatting attacks.</div>
+    </div>
+    <div class="feat-card">
+      <span class="feat-icon">📸</span>
+      <div class="feat-name">Website Screenshot</div>
+      <div class="feat-desc">Captures a live screenshot of the URL via APIFlash so you can visually verify the page content before visiting, without risking your browser.</div>
+    </div>
+  </div>
+</div>
+
+<!-- APIS PANEL -->
+<div class="overlay-panel" id="panel-apis">
+  <button class="panel-close" onclick="closePanel()"></button>
+  <div class="panel-eyebrow">Integrations</div>
+  <div class="panel-title">APIs Used</div>
+  <div class="api-grid">
+    <div class="api-row">
+      <div class="api-dot blue">🔍</div>
+      <div>
+        <div class="api-name">Google Safe Browsing <span class="api-key-tag">GOOGLE_API_KEY</span></div>
+        <div class="api-desc">Google's threat intelligence API checks URLs against continuously updated lists of phishing, malware, and deceptive sites. First-pass hard block if flagged.</div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-dot orange">🦠</div>
+      <div>
+        <div class="api-name">VirusTotal <span class="api-key-tag">VIRUSTOTAL_API_KEY</span></div>
+        <div class="api-desc">Submits the URL to 91+ antivirus and security engines simultaneously. Returns per-engine verdicts: malicious, suspicious, clean, or undetected.</div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-dot purple">🧠</div>
+      <div>
+        <div class="api-name">HuggingFace Inference API <span class="api-key-tag">built-in</span></div>
+        <div class="api-desc">Runs the elftsdmr/malware-url-detect transformer model as a secondary AI verdict layer. Returns a phishing probability score independently of the ML model.</div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-dot green">📸</div>
+      <div>
+        <div class="api-name">APIFlash <span class="api-key-tag">APIFLASH_KEY</span></div>
+        <div class="api-desc">Headless Chrome screenshot API. Captures a full-page visual of the target URL so analysts can inspect the page appearance without navigating to it directly.</div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-dot pink">💬</div>
+      <div>
+        <div class="api-name">Groq LLM <span class="api-key-tag">GROQ_API_KEY</span></div>
+        <div class="api-desc">Powers the Ask AI chat panel. Uses Groq's ultra-fast inference (LLaMA 3 / Mixtral) to answer natural-language questions about scan results in real time.</div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-dot blue">🌐</div>
+      <div>
+        <div class="api-name">ipinfo.io <span class="api-key-tag">free tier</span></div>
+        <div class="api-desc">Resolves the URL's IP address to country, city, ASN, and hosting provider. Used to flag suspicious hosting geographies and cloud-abuse providers.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT PANEL -->
+<div class="overlay-panel" id="panel-about">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div class="panel-eyebrow">Background</div>
+  <div class="panel-title">About PhishGuard</div>
+  <div class="about-body">
+    <p>PhishGuard is a multi-layered URL threat analysis tool built to go beyond simple blocklist lookups. It combines a custom-trained machine learning model with real-time signals from five external APIs to deliver a confident verdict on any URL in under five seconds.</p>
+    <p>The ML model was trained on 70,000+ labeled URLs and extracts structural features like URL length, digit ratio, special character density, entropy, and TLD risk score. Google Safe Browsing and VirusTotal provide threat-intelligence cross-validation, while HuggingFace AI adds a deep-learning second opinion.</p>
+    <p>DNS/WHOIS lookups surface hosting anomalies and newly registered domains — a strong indicator of phishing infrastructure. SSL certificate inspection, brand impersonation detection, and live screenshots round out the analysis so you have the full picture before clicking anything.</p>
+    <p>The built-in AI chat (powered by Groq) lets you ask plain-language questions about any scan result — no security expertise required.</p>
+    <div class="about-stack">
+      <span class="stack-chip">Python / Flask</span>
+      <span class="stack-chip">scikit-learn</span>
+      <span class="stack-chip">Google Safe Browsing</span>
+      <span class="stack-chip">VirusTotal</span>
+      <span class="stack-chip">HuggingFace</span>
+      <span class="stack-chip">Groq LLM</span>
+      <span class="stack-chip">APIFlash</span>
+      <span class="stack-chip">ipinfo.io</span>
+      <span class="stack-chip">Jinja2</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* MATRIX RAIN - lighter, fewer columns */
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx    = canvas.getContext('2d');
+
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  window.addEventListener('resize', () => {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    initColumns();
+  });
+
+  const chars = '01アイウカキ<>{}|ABCDEF'.split('');
+  const fontSize = 14;
+  let columns = [];
+
+  function initColumns() {
+    const count = Math.floor(canvas.width / (fontSize * 1.8));
+    columns = Array.from({length: count}, () => Math.random() * -canvas.height);
+  }
+  initColumns();
+
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    columns.forEach((y, i) => {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      const x = i * (fontSize * 1.8);
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.55)';
+      ctx.font = `${fontSize}px monospace`;
+      ctx.fillText(char, x, y);
+
+      if (y > canvas.height && Math.random() > 0.975) columns[i] = 0;
+      columns[i] += fontSize;
+    });
+
+    requestAnimationFrame(drawMatrix);
+  }
+  drawMatrix();
+
+  /* PANEL LOGIC */
+  function openPanel(id) {
+    document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('open'));
+    document.getElementById('backdrop').classList.add('open');
+    document.getElementById('panel-' + id).classList.add('open');
+  }
+
+  function closePanel() {
+    document.getElementById('backdrop').classList.remove('open');
+    document.querySelectorAll('.overlay-panel').forEach(p => p.classList.remove('open'));
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+</script>
+
+</body>
+</html>

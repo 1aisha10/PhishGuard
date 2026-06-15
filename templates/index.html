@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhishGuard — URL Phishing Detector</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #050d1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ANIMATED BACKGROUND */
+    .bg-animation {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .bg-animation canvas {
+      position: absolute;
+      top: 0; left: 0;
+    }
+
+    .content { position: relative; z-index: 1; }
+
+    /* HEADER */
+    .header {
+      background: rgba(13, 21, 38, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-badge {
+      margin-left: auto;
+      font-size: 0.7rem;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* HERO */
+    .hero {
+      text-align: center;
+      padding: 4rem 1rem 2rem;
+    }
+
+    .hero-icon {
+      font-size: 4rem;
+      display: block;
+      margin-bottom: 1rem;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .hero h2 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #f8fafc, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero p {
+      color: #475569;
+      font-size: 0.95rem;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* SEARCH */
+    .search-wrap {
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 10px;
+      background: rgba(30, 41, 59, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      padding: 8px 8px 8px 20px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .search-box:focus-within {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15), 0 0 30px rgba(59, 130, 246, 0.1);
+    }
+
+    .search-box input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: #f1f5f9;
+      font-size: 1rem;
+    }
+
+    .search-box input::placeholder { color: #334155; }
+
+    .scan-btn {
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #3b82f6, #7c3aed);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      white-space: nowrap;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .scan-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      transition: left 0.4s;
+    }
+
+    .scan-btn:hover::before { left: 100%; }
+    .scan-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); }
+
+    /* SCANNING ANIMATION */
+    .scanning {
+      display: none;
+      text-align: center;
+      padding: 1.5rem;
+    }
+
+    .scan-ring {
+      width: 60px;
+      height: 60px;
+      border: 3px solid rgba(59, 130, 246, 0.2);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .scanning p {
+      color: #60a5fa;
+      font-size: 0.9rem;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ERROR */
+    .error-box { max-width: 720px; margin: 1rem auto; padding: 0 1rem; }
+    .error {
+      background: rgba(69, 10, 10, 0.8);
+      border: 1px solid #ef4444;
+      border-radius: 12px;
+      padding: 1rem;
+      color: #fca5a5;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+
+    /* RESULTS */
+    .results {
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 0 1rem 4rem;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* VERDICT */
+    .verdict-card {
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .verdict-card::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%);
+      animation: shimmer 4s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(10%, 10%); }
+    }
+
+    .verdict-card.safe {
+      background: rgba(5, 46, 22, 0.7);
+      border: 1px solid rgba(22, 163, 74, 0.5);
+      box-shadow: 0 0 40px rgba(22, 163, 74, 0.1);
+    }
+
+    .verdict-card.phishing {
+      background: rgba(45, 10, 10, 0.7);
+      border: 1px solid rgba(220, 38, 38, 0.5);
+      box-shadow: 0 0 40px rgba(220, 38, 38, 0.1);
+    }
+
+    .verdict-left { display: flex; align-items: center; gap: 1.25rem; }
+    .verdict-icon { font-size: 3rem; }
+    .verdict-label { font-size: 2rem; font-weight: 800; }
+    .safe .verdict-label { color: #22c55e; }
+    .phishing .verdict-label { color: #ef4444; }
+    .verdict-url { font-size: 0.82rem; color: #64748b; word-break: break-all; margin-top: 4px; max-width: 500px; }
+    .verdict-right { text-align: right; }
+    .confidence-num { font-size: 2.5rem; font-weight: 800; color: #f8fafc; }
+    .confidence-label { font-size: 0.75rem; color: #475569; margin-bottom: 6px; }
+
+    .source-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .badge-google  { background: rgba(30, 58, 95, 0.8);  color: #60a5fa; border: 1px solid #3b82f6; }
+    .badge-ml      { background: rgba(30, 27, 75, 0.8);  color: #a78bfa; border: 1px solid #7c3aed; }
+    .badge-trusted { background: rgba(5, 46, 22, 0.8);   color: #4ade80; border: 1px solid #16a34a; }
+    .badge-hf      { background: rgba(49, 21, 3, 0.8);   color: #fb923c; border: 1px solid #ea580c; }
+
+    /* INFO GRID */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 1rem;
+    }
+
+    .info-card {
+      background: rgba(13, 21, 38, 0.7);
+      border: 1px solid rgba(30, 45, 69, 0.8);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+      transition: border-color 0.3s, transform 0.3s;
+      animation: fadeInUp 0.5s ease both;
+    }
+
+    .info-card:hover {
+      border-color: rgba(59, 130, 246, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .info-card:nth-child(1) { animation-delay: 0.1s; }
+    .info-card:nth-child(2) { animation-delay: 0.15s; }
+    .info-card:nth-child(3) { animation-delay: 0.2s; }
+    .info-card:nth-child(4) { animation-delay: 0.25s; }
+    .info-card:nth-child(5) { animation-delay: 0.3s; }
+    .info-card:nth-child(6) { animation-delay: 0.35s; }
+    .info-card:nth-child(7) { animation-delay: 0.4s; }
+
+    .info-card h3 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #334155;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(30, 45, 69, 0.5);
+      gap: 1rem;
+    }
+
+    .info-row:last-child { border-bottom: none; }
+    .info-key { font-size: 0.8rem; color: #475569; flex-shrink: 0; }
+    .info-val { font-size: 0.8rem; color: #94a3b8; text-align: right; word-break: break-all; }
+    .info-val.green  { color: #22c55e; }
+    .info-val.red    { color: #ef4444; }
+    .info-val.yellow { color: #eab308; }
+    .info-val.blue   { color: #60a5fa; }
+
+    /* VIRUSTOTAL BAR */
+    .vt-bar-wrap { margin-top: 8px; }
+    .vt-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .vt-bar-label { font-size: 0.75rem; color: #475569; width: 80px; flex-shrink: 0; }
+    .vt-bar { flex: 1; height: 6px; background: rgba(30, 45, 69, 0.8); border-radius: 99px; overflow: hidden; }
+    .vt-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+    .vt-bar-fill.red    { background: #ef4444; }
+    .vt-bar-fill.yellow { background: #eab308; }
+    .vt-bar-fill.green  { background: #22c55e; }
+    .vt-bar-count { font-size: 0.75rem; color: #64748b; width: 24px; text-align: right; }
+
+    /* SCREENSHOT */
+    .screenshot-card {
+      grid-column: 1 / -1;
+      background: rgba(13, 21, 38, 0.7);
+      border: 1px solid rgba(30, 45, 69, 0.8);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .screenshot-card h3 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #334155;
+      margin-bottom: 1rem;
+    }
+
+    .screenshot-card img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(30, 45, 69, 0.8);
+      .ai-box {
+  background: rgba(13, 21, 38, 0.75);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  backdrop-filter: blur(10px);
+  animation: fadeInUp 0.5s ease;
+}
+
+.ai-box h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #60a5fa;
+  margin-bottom: 1rem;
+}
+
+.ai-box input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  background: rgba(30, 41, 59, 0.6);
+  color: white;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.ai-box input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+}
+
+.ai-box button {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #3b82f6, #7c3aed);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s;
+}
+
+.ai-box button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(59,130,246,0.3);
+}
+
+#ai-response {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.5);
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  min-height: 30px;
+  white-space: pre-wrap;
+}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ANIMATED WAVE BACKGROUND -->
+  <div class="bg-animation">
+    <canvas id="waveCanvas"></canvas>
+  </div>
+
+  <div class="content">
+
+    <!-- HEADER -->
+    <div class="header">
+      <span style="font-size:1.5rem">🛡️</span>
+      <h1>PhishGuard</h1>
+      <span class="header-badge">AI-Powered URL Scanner</span>
+    </div>
+
+    <!-- HERO -->
+    <div class="hero">
+      <span class="hero-icon">🔍</span>
+      <h2>Is this URL safe?</h2>
+      <p>Powered by ML Model · Google Safe Browsing · HuggingFace AI · VirusTotal · Live DNS/WHOIS</p>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="search-wrap">
+      <form method="POST" onsubmit="startScan()">
+        <div class="search-box">
+          <input type="text" name="url" placeholder="Enter URL to scan — e.g. https://example.com" value="{{ url }}" autofocus>
+          <button type="submit" class="scan-btn">🔍 Scan URL</button>
+          <button type="button" onclick="clearResults()" class="scan-btn" style="background: linear-gradient(135deg, #475569, #334155);">✕ Clear</button>
+        </div>
+      </form>
+      <div class="scanning" id="scanning">
+        <div class="scan-ring"></div>
+        <p>Scanning URL across all engines...</p>
+      </div>
+    </div>
+
+    <!-- ERROR -->
+    {% if error %}
+    <div class="error-box">
+      <div class="error">⚠️ {{ error }}</div>
+    </div>
+    {% endif %}
+
+    <!-- RESULTS -->
+    {% if result %}
+    <div class="results">
+
+    <div class="ai-box">
+    <h3>🤖 Ask AI About This URL</h3>
+    
+    <input type="text" id="ai-question" placeholder="Ask something about this URL..." />
+    <button onclick="askAI()">Ask</button>
+
+    <div id="ai-response"></div>
+</div>
+
+<script>
+function askAI() {
+    const question = document.getElementById("ai-question").value;
+    const result = {{ result | tojson | safe }};
+
+    fetch("/ask_ai", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "question=" + encodeURIComponent(question) + 
+              "&result=" + encodeURIComponent(JSON.stringify(result))
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("ai-response").innerText = data.answer;
+    });
+}
+</script>
+
+      <!-- VERDICT -->
+      <div class="verdict-card {{ 'phishing' if result.prediction == 1 else 'safe' }}">
+        <div class="verdict-left">
+          <div class="verdict-icon">{{ '🚨' if result.prediction == 1 else '✅' }}</div>
+          <div>
+            <div class="verdict-label">{{ 'PHISHING' if result.prediction == 1 else 'SAFE' }}</div>
+            <div class="verdict-url">{{ result.url }}</div>
+          </div>
+        </div>
+        <div class="verdict-right">
+          <div class="confidence-label">Confidence</div>
+          <div class="confidence-num">{{ result.confidence }}%</div>
+          {% if result.source == 'Google Safe Browsing' %}
+            <span class="source-badge badge-google">Google Safe Browsing</span>
+          {% elif result.source == 'Trusted Domain' %}
+            <span class="source-badge badge-trusted">Trusted Domain</span>
+          {% elif result.source == 'HuggingFace AI Model' %}
+            <span class="source-badge badge-hf">HuggingFace AI</span>
+          {% else %}
+            <span class="source-badge badge-ml">ML Model</span>
+          {% endif %}
+        </div>
+      </div>
+
+{% if result.reasons or result.warnings %}
+<div class="card" style="margin-bottom:1.5rem; border-color: {{ 'rgba(239,68,68,0.2)' if result.prediction == 1 else 'rgba(16,185,129,0.2)' }}">
+  <div class="card-header">
+    <div class="card-icon">📋</div>
+    <span class="card-title">Why this verdict?</span>
+  </div>
+  {% for reason in result.reasons %}
+    <div class="row">
+      <span class="row-val c-red" style="text-align:left">{{ reason }}</span>
+    </div>
+  {% endfor %}
+  {% for warning in result.warnings %}
+    <div class="row">
+      <span class="row-val c-yellow" style="text-align:left">{{ warning }}</span>
+    </div>
+  {% endfor %}
+  {% if not result.reasons and not result.warnings %}
+    <div class="row">
+      <span class="row-val c-green" style="text-align:left">✓ No threats or suspicious signals detected</span>
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+
+      <!-- INFO GRID -->
+      <div class="info-grid">
+
+        <!-- URL INFO -->
+        <div class="info-card">
+          <h3>🔗 URL Information</h3>
+          <div class="info-row">
+            <span class="info-key">Source URL</span>
+            <span class="info-val">{{ result.url }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">TLD</span>
+            <span class="info-val blue">.{{ result.tld }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Brand Detected</span>
+            <span class="info-val {{ 'yellow' if result.brand else '' }}">{{ result.brand if result.brand else '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Detection Method</span>
+            <span class="info-val blue">{{ result.source }}</span>
+          </div>
+        </div>
+
+        <!-- IP + HOSTING -->
+        <div class="info-card">
+          <h3>🌐 IP & Hosting</h3>
+          <div class="info-row">
+            <span class="info-key">IP Address</span>
+            <span class="info-val blue">{{ result.ip_info.ip if result.ip_info.ip else '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Country</span>
+            <span class="info-val">{{ result.ip_info.country if result.ip_info.country else '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Hosting Provider</span>
+            <span class="info-val">{{ result.ip_info.hosting_provider if result.ip_info.hosting_provider else '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">ASN</span>
+            <span class="info-val">{{ result.ip_info.asn if result.ip_info.asn else '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Network Name</span>
+            <span class="info-val">{{ result.ip_info.city if result.ip_info.city else '—' }}</span>
+          </div>
+        </div>
+
+        <!-- CERTIFICATE -->
+        <div class="info-card">
+          <h3>🔒 Certificate Details</h3>
+          <div class="info-row">
+            <span class="info-key">SSL Valid</span>
+            <span class="info-val {{ 'green' if result.cert_info.is_valid else 'red' }}">
+              {{ '✓ Yes' if result.cert_info.is_valid else '✗ No' }}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Issuer</span>
+            <span class="info-val">{{ result.cert_info.issuer if result.cert_info.issuer else '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Valid From</span>
+            <span class="info-val">{{ result.cert_info.valid_from if result.cert_info.valid_from else '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Valid To</span>
+            <span class="info-val">{{ result.cert_info.valid_to if result.cert_info.valid_to else '—' }}</span>
+          </div>
+        </div>
+
+        <!-- THREAT INTEL -->
+        <div class="info-card">
+          <h3>⚠️ Threat Intelligence</h3>
+          <div class="info-row">
+            <span class="info-key">Google Safe Browsing</span>
+            <span class="info-val {{ 'red' if result.source == 'Google Safe Browsing' else 'green' }}">
+              {{ '🚨 Flagged' if result.source == 'Google Safe Browsing' else '✓ Clean' }}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">ML Model</span>
+            <span class="info-val {{ 'red' if result.prediction == 1 else 'green' }}">
+              {{ '🚨 Phishing' if result.prediction == 1 else '✓ Safe' }}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">HuggingFace AI</span>
+            <span class="info-val {{ 'red' if result.hf_phishing else 'green' }}">
+              {{ '🚨 Phishing' if result.hf_phishing else '✓ Safe' }}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Brand Impersonation</span>
+            <span class="info-val {{ 'yellow' if result.brand else 'green' }}">
+              {{ '⚠️ ' + result.brand if result.brand else '✓ None' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- VIRUSTOTAL -->
+        <div class="info-card">
+          <h3>🦠 VirusTotal Scan</h3>
+          {% if result.vt.error %}
+            <div class="info-row">
+              <span class="info-key">Status</span>
+              <span class="info-val yellow">⚠️ Unavailable</span>
+            </div>
+          {% else %}
+            <div class="info-row">
+              <span class="info-key">Engines Checked</span>
+              <span class="info-val blue">{{ result.vt.total }}</span>
+            </div>
+            <div class="vt-bar-wrap">
+              <div class="vt-bar-row">
+                <span class="vt-bar-label">Malicious</span>
+                <div class="vt-bar">
+                  <div class="vt-bar-fill red" style="width: {{ (result.vt.malicious / result.vt.total * 100) | round if result.vt.total > 0 else 0 }}%"></div>
+                </div>
+                <span class="vt-bar-count red">{{ result.vt.malicious }}</span>
+              </div>
+              <div class="vt-bar-row">
+                <span class="vt-bar-label">Suspicious</span>
+                <div class="vt-bar">
+                  <div class="vt-bar-fill yellow" style="width: {{ (result.vt.suspicious / result.vt.total * 100) | round if result.vt.total > 0 else 0 }}%"></div>
+                </div>
+                <span class="vt-bar-count yellow">{{ result.vt.suspicious }}</span>
+              </div>
+              <div class="vt-bar-row">
+                <span class="vt-bar-label">Clean</span>
+                <div class="vt-bar">
+                  <div class="vt-bar-fill green" style="width: {{ (result.vt.clean / result.vt.total * 100) | round if result.vt.total > 0 else 0 }}%"></div>
+                </div>
+                <span class="vt-bar-count green">{{ result.vt.clean }}</span>
+              </div>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- HUGGINGFACE AI -->
+        <div class="info-card">
+          <h3>🤖 HuggingFace AI Model</h3>
+          <div class="info-row">
+            <span class="info-key">AI Verdict</span>
+            <span class="info-val {{ 'red' if result.hf_phishing else 'green' }}">
+              {{ '🚨 Phishing' if result.hf_phishing else '✓ Safe' }}
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">AI Confidence</span>
+            <span class="info-val">{{ result.hf_score }}%</span>
+          </div>
+          <div class="info-row">
+            <span class="info-key">Model</span>
+            <span class="info-val">elftsdmr/malware-url-detect</span>
+          </div>
+        </div>
+
+        <!-- SCREENSHOT -->
+        {% if result.screenshot %}
+        <div class="screenshot-card">
+          <h3>📸 Website Screenshot</h3>
+          <img src="{{ result.screenshot }}" alt="Screenshot"
+               onerror="this.parentElement.style.display='none'">
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+
+  
+
+  <script>
+    // WAVE ANIMATION
+    const canvas = document.getElementById('waveCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    let t = 0;
+    function drawWaves() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const waves = [
+        { color: 'rgba(59, 130, 246, 0.04)', speed: 0.3, amp: 60, freq: 0.008, y: 0.3 },
+        { color: 'rgba(124, 58, 237, 0.04)', speed: 0.2, amp: 80, freq: 0.006, y: 0.5 },
+        { color: 'rgba(59, 130, 246, 0.03)', speed: 0.4, amp: 50, freq: 0.01,  y: 0.7 },
+        { color: 'rgba(16, 185, 129, 0.03)', speed: 0.15, amp: 90, freq: 0.005, y: 0.9 },
+      ];
+
+      waves.forEach(wave => {
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height * wave.y);
+        for (let x = 0; x <= canvas.width; x++) {
+          const y = Math.sin(x * wave.freq + t * wave.speed) * wave.amp
+                  + Math.sin(x * wave.freq * 1.5 + t * wave.speed * 0.7) * (wave.amp * 0.5)
+                  + canvas.height * wave.y;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        ctx.fillStyle = wave.color;
+        ctx.fill();
+      });
+
+      t += 0.5;
+      requestAnimationFrame(drawWaves);
+    }
+    drawWaves();
+
+    // SCAN ANIMATION
+    function startScan() {
+      document.getElementById('scanning').style.display = 'block';
+    }
+
+    document.querySelector('input[name="url"]').addEventListener('input', function() {
+        const results = document.querySelector('.results');
+        if (results) results.style.display = 'none';
+    });
+
+    function clearResults() {
+    document.querySelector('input[name="url"]').value = '';
+    const results = document.querySelector('.results');
+    if (results) results.style.display = 'none';
+    document.getElementById('scanning').style.display = 'none';
+}
+  </script>
+
+</body>
+</html>
