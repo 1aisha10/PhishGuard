@@ -308,7 +308,7 @@ python app.py
 
 ## System Architecture
 
-![Architecture](screenshots/architecture.jpeg)
+![Architecture](screenshots/architecture.png)
 
 ---
 # 🔄 Detection Workflow
