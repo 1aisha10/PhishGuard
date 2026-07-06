@@ -285,32 +285,35 @@ python app.py
 
 ## Homepage
 
-![Homepage](screenshots/homepage.png)
+![homepage](screenshots/homepage.jpeg)
 
 ---
 
 ## ✅ Legitimate Website Detection
 
-![Legitimate Website Detection](screenshots/safe.png)
+![Safe](screenshots/safe.jpeg)
 
 ---
 
 ## 🚨 Phishing Website Detection
 
-![Phishing Website Detection](screenshots/bad.png)
+![Bad](screenshots/bad.jpeg)
 ---
 
 ## AI Assistant
 
-![AI Assistant](screenshots/groq.png)
+![Groq](screenshots/groq.PNG)
 
 ---
 
 ## System Architecture
 
-![Architecture](screenshots/architecture.png)
+![Architecture](screenshots/architecture.jpeg)
 
 ---
+# 🔄 Detection Workflow
+
+![Workflow](screenshots/workflow.png)
 
 # Future Improvements
 
